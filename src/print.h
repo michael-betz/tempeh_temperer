@@ -7,7 +7,6 @@
 
 #ifndef PRINT_H
 #define PRINT_H
-#include <stdint.h>
 
 // Print a single character (see note above!)
 void _putchar(char c);

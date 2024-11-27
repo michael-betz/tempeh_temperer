@@ -7,6 +7,7 @@
 // a 4.7K resistor is necessary
 OneWire ds(PIN_ONE_WIRE);
 
+uint8_t one_wire_error = 0;
 uint8_t ds_addr[8];
 
 void init_one_wire(void)
@@ -105,18 +106,4 @@ int16_t read_temp()
 
 	one_wire_error = 0;
 	return (data[1] << 8) | data[0];
-}
-
-// returns true when new value should available and writes it to val
-// val is only valid if one_wire_error is 0
-bool get_temp_meas(unsigned long ts_now, int16_t *val)
-{
-	static unsigned long ts_ready = 0;
-	if (ts_now >= ts_ready) {
-		*val = read_temp();
-		conv_temp();
-		ts_ready = ts_now + CONV_TIME_MS;
-		return true;
-	}
-	return false;
 }

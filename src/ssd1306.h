@@ -26,6 +26,7 @@ void fill(bool val);
 void fillRect(int x0, int x1, int y0, int y1, bool isSet);
 void writeFillRect(int x, int y, int w, int h, bool color);
 void rect(int x0, int x1, int y0, int y1, bool isSet);
+void writeRect(int x, int y, int w, int h, bool color);
 void line(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
 void vLine(unsigned x, unsigned y, unsigned h, bool isSet);
 void hLine(unsigned x, unsigned y, unsigned w, bool isSet);

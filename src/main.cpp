@@ -8,6 +8,13 @@
 #include "main.h"
 #include "pid.h"
 
+// 0: incubation. Never open the lid
+// 1: growing. Open the lid
+// 2: finished, disable temp. regulation
+uint8_t current_stage = 0;
+uint16_t target_temperatures[N_STAGES] = {0};
+uint16_t max_temperatures[N_STAGES] = {0};
+
 void setup()
 {
 	// Init GPIOs timer
@@ -39,105 +46,15 @@ void setup()
 		ssd_invert();
 
 	pid_init();
-}
 
-void gui(unsigned long ts_now)
-{
-	print_mux = PRINT_OLED;
-	fill(0);
-
-	if (heater_enabled) {
-		// bar-graph
-		hLine(0, 0, DISPLAY_WIDTH, true);
-		hLine(0, 7, DISPLAY_WIDTH, true);
-		int16_t p = (power + FP_ROUND) >> (FP_FRAC + 1);
-		if (p > 0)
-			fillRect(0, p, 2, 5, true);
-		else if (p < 0)
-			fillRect(DISPLAY_WIDTH + p - 1, DISPLAY_WIDTH - 1, 2, 5, true);
-	} else {
-		set_cursor(1, 1);
-		print_str("Power disabled");
-	}
-
-	// temperature reading
-	set_cursor(1, 17);
-	set_size(4);
-	if (one_wire_error > 0) {
-		print_str("E");
-		print_udec(one_wire_error);
-	} else {
-		print_dec_fix(t_read, FP_FRAC, 1);
-		set_size(2);
-		print_str(" C\n");
-	}
-
-	// set-point
-	set_cursor(0, 57);
-	set_size(1);
-	print_str("set: ");
-	print_dec_fix(t_set, FP_FRAC, 1);
-	print_str(" C\n");
-
-	ssd_send();
-	print_mux = PRINT_UART;
-
-	// invert display every 1 h
-	static unsigned long ts_last_invert = 0;
-	if (ts_now - ts_last_invert > 1000l * 60 * 60) {
-		ts_last_invert = ts_now;
-		ssd_invert();
-	}
-}
-
-void buttons(unsigned long ts_now)
-{
-	static uint8_t idle_cycles=0xFF, pushed_cycles=0, n_incr=0;
-	static unsigned long ts = 0;
-
-	if (ts_now - ts <= 1)
-		return;
-	ts = ts_now;
-
-	int8_t sign = 0;
-	if (digitalRead(PIN_UP) == 0) {
-		sign = 1;
-	} else if (digitalRead(PIN_DOWN) == 0) {
-		sign = -1;
-	} else {
-		pushed_cycles = 0;
-		n_incr = 0;
-
-		if (idle_cycles == 0xFE) {
-			store(t_set, 0);
-			if (!heater_enabled) {
-				print_str("Enabling heater\n");
-				heater_enabled = true;
-			}
+	for (uint8_t i=0; i<N_STAGES; i++) {
+		uint32_t tmp = 0;
+		if (!load_ee((int32_t*)(&tmp), SL_PROCESS_0 + i)) {
+			tmp = (FP(38.0) << 16) | FP(32.0);
+			print_str("Slot "); print_hex(i, 1); print_str("invalid. Using 32 / 38 degC\n");
 		}
 
-		if (idle_cycles < 0xFF)
-			idle_cycles++;
-
-		return;
 	}
-
-	if (pushed_cycles == 5) {
-		if (n_incr > 10) {
-			t_set += FP(1.0) * sign;
-		} else {
-			t_set += FP(0.1) * sign;
-			n_incr++;
-		}
-		t_set = limit(t_set, FP(0.0), FP(50.0));
-		idle_cycles = 0;
-		gui(ts_now);
-	}
-
-	if (pushed_cycles >= 50)
-		pushed_cycles = 0;
-
-	pushed_cycles++;
 }
 
 // For setting the temperature set-point over serial port
@@ -174,7 +91,7 @@ void serial_in()
 				print_str(line_buf);
 				print_str("\n");
 				t_set = f * FP_SCALE;
-				store(t_set, 0);
+				store_ee(t_set, SL_T_SET);
 			}
 			wp = 0;
 			continue;
@@ -186,9 +103,15 @@ void serial_in()
 	}
 }
 
+void open_hatch()
+{
+
+}
+
 void every_cycle(unsigned long ts_now)
 {
 	pid_cycle();
+	open_hatch();
 
 	// Here's a good place to do things which are blocking for a while
 	gui(ts_now);

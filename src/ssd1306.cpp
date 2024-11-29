@@ -302,6 +302,11 @@ void writeFillRect(int x, int y, int w, int h, bool color)
 	fillRect(x, x + w, y, y + h, color);
 }
 
+void writeRect(int x, int y, int w, int h, bool color)
+{
+	rect(x, x + w, y, y + h, color);
+}
+
 void rect(int x0, int x1, int y0, int y1, bool isSet)
 {
 	limit(&x0, &x1, DISPLAY_WIDTH - 1);

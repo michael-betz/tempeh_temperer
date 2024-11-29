@@ -15,7 +15,7 @@
 #define FP(v) ((int32_t)(v * FP_SCALE + 0.5))
 
 #define MAX_POWER (0xFF << FP_FRAC)
-#define MIN_POWER (0)
+#define MIN_POWER (0 << FP_FRAC)
 
 // PWM pins: 3, 5, 6, 9, 10, 11
 #define PIN_PWM 3
@@ -27,5 +27,9 @@
 #define PIN_DOWN 2
 
 #define PIN_ONE_WIRE 9
+
+#define N_STAGES 2
+
+extern uint8_t current_stage;
 
 #endif

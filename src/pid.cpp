@@ -106,7 +106,7 @@ static void pid_step()
 	cycle++;
 
 	if (cycle > 0 && (cycle % 200) == 0 && i_val != 0)
-		store(i_val, 1);
+		store_ee(i_val, SL_I_VAL);
 }
 
 int32_t limit(int32_t val, int32_t a, int32_t b)
@@ -127,8 +127,8 @@ void pid_init()
 	init_one_wire();
 	conv_temp();
 
-	load(&t_set, 0);
-	load(&i_val, 1);
+	load_ee(&t_set, SL_T_SET);
+	load_ee(&i_val, SL_I_VAL);
 
 	// Make sure a valid temp. readin is available in the first cycle
 	delay(CYCLE_TIME);
@@ -155,7 +155,7 @@ void pid_cycle()
 	set_heater((power + FP_ROUND) >> FP_FRAC);
 }
 
-void store(int32_t val, uint8_t slot)
+void store_ee(int32_t val, uint8_t slot)
 {
 	uint8_t sum = 0;
 	for (uint8_t i=0; i<=3; i++) {
@@ -169,7 +169,7 @@ void store(int32_t val, uint8_t slot)
 	print_str("\n");
 }
 
-bool load(int32_t *val, uint8_t slot)
+bool load_ee(int32_t *val, uint8_t slot)
 {
 	int32_t tmp = 0;
 	uint8_t sum = 0;

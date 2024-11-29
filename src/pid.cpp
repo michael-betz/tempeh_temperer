@@ -25,8 +25,8 @@ static void set_heater(uint8_t val)
 
 static void pid_step()
 {
-	static const int32_t k_p = FP(70.0);
-	static const int32_t k_i = FP(0.2);
+	static const int32_t k_p = FP(20.0);
+	static const int32_t k_i = FP(0.1);
 	static const int32_t k_d = FP(0.0);  // limited due to sensors resolution
 
 	static uint32_t cycle = 0;
@@ -34,29 +34,32 @@ static void pid_step()
 	static int32_t d_val = 0;
 	static int32_t r_ = 0, r__ = 0, r___ = 0;
 
+	// 4 averaged temp. readings
+	int32_t r = (t_read + r_ + r__ + r___ + 2) / 4;
+
 	int32_t err = 0, diff = 0;
 	if (cycle >= 3) {
 		// Calculate error from 4 averaged temperature readings
-		err = t_set - (t_read + r_ + r__ + r___ + 2) / 4;
+		err = t_set - r;
 
 		// Calculate differential from 4 readings apart
 		diff = r___ - t_read;
 	}
 
 	// Squared error
-	int32_t err2 = ((int64_t)err * err + FP_ROUND) >> FP_FRAC;
-	if (err < 0) {
-		err2 = -err2;
-	}
+	// int32_t err2 = ((int64_t)err * err + FP_ROUND) >> FP_FRAC;
+	// if (err < 0) {
+	// 	err2 = -err2;
+	// }
 
-	// Proportional term (from squared error)
-	p_val = (err2 * k_p + FP_ROUND) >> FP_FRAC;
-	p_val = limit(p_val, MIN_POWER - 1, MAX_POWER + 1);
+	// Proportional term
+	p_val = (err * k_p + FP_ROUND) >> FP_FRAC;
+	p_val = limit(p_val, -MAX_POWER - 1, MAX_POWER + 1);
 
 	// Integral term (from linear error)
 	if (abs(p_val) >= MAX_POWER) {
-		// No point of integrating if we are pegged
-		i_val = 0;
+		// Put the I part at half power if we are pegged
+		i_val = (p_val > 0) ? MAX_POWER / 2 : MIN_POWER / 2;
 	} else {
 		i_val += (err * k_i + FP_ROUND) >> FP_FRAC;
 		i_val = limit(i_val, MIN_POWER, MAX_POWER);
@@ -73,7 +76,7 @@ static void pid_step()
 
 	r___ = r__;
 	r__ = r_;
-	r_ = t_read;
+	r_ = r;
 
 	print_str("c ");
 	print_udec(cycle);
@@ -84,7 +87,7 @@ static void pid_step()
 	print_str(", ");
 
 	print_str("r ");
-	print_dec_fix(t_read, FP_FRAC, 2);
+	print_dec_fix(r, FP_FRAC, 2);
 	print_str(", ");
 
 	print_str("p ");

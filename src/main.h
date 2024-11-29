@@ -18,10 +18,12 @@
 #define MIN_POWER (0 << FP_FRAC)
 
 // PWM pins: 3, 5, 6, 9, 10, 11
+// Heater PWM pin
 #define PIN_PWM 3
-#define SET_HEATER(x) { analogWrite(PIN_PWM, 0xFF - (x)); }
 
-#define PIN_RELAY 12
+// Motor to open / close the lid
+#define PIN_MOTOR_DIRECTION 12
+#define PIN_MOTOR_ENABLE 10
 
 #define PIN_UP 8
 #define PIN_DOWN 2

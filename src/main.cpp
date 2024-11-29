@@ -15,13 +15,52 @@ uint8_t current_stage = 0;
 uint16_t target_temperatures[N_STAGES] = {0};
 uint16_t max_temperatures[N_STAGES] = {0};
 
+
+#define MAX_HATCH 50
+
+void set_motor(int8_t amount)
+{
+	static int16_t current_pos = 0;
+
+	int16_t target = current_pos + amount;
+	if (target < 0)
+		target = 0;
+	else if (target > MAX_HATCH)
+		target = MAX_HATCH;
+
+	amount = target - current_pos;
+	if (amount == 0) {
+		return;
+	} else if (amount < 0) {
+		digitalWrite(PIN_MOTOR_DIRECTION, HIGH);
+		delay(100);
+		amount = -amount;
+	}
+
+	for (uint8_t i=0; i<amount; i++) {
+		digitalWrite(PIN_MOTOR_ENABLE, HIGH);
+		delay(250);
+	}
+
+	digitalWrite(PIN_MOTOR_ENABLE, LOW);
+	digitalWrite(PIN_MOTOR_DIRECTION, LOW);
+	current_pos = target;
+	print_str("Hatch @ "); print_dec(current_pos); print_str("\n");
+}
+
+
 void setup()
 {
 	// Init GPIOs timer
 	digitalWrite(PIN_PWM, LOW);
 	pinMode(PIN_PWM, OUTPUT);
-	digitalWrite(PIN_RELAY, LOW);
-	pinMode(PIN_RELAY, OUTPUT);
+
+	digitalWrite(PIN_MOTOR_DIRECTION, LOW);
+	pinMode(PIN_MOTOR_DIRECTION, OUTPUT);
+
+	digitalWrite(PIN_MOTOR_ENABLE, LOW);
+	pinMode(PIN_MOTOR_ENABLE, OUTPUT);
+
 	pinMode(PIN_UP, INPUT_PULLUP);
 	pinMode(PIN_DOWN, INPUT_PULLUP);
 
@@ -53,7 +92,8 @@ void setup()
 			tmp = (FP(38.0) << 16) | FP(32.0);
 			print_str("Slot "); print_hex(i, 1); print_str("invalid. Using 32 / 38 degC\n");
 		}
-
+		target_temperatures[i] = tmp & 0xFFFF;
+		max_temperatures[i] = (tmp >> 16) & 0xFFFF;
 	}
 }
 
@@ -105,16 +145,23 @@ void serial_in()
 
 void open_hatch()
 {
-
+	if (t_read > t_set + FP(5.0))
+		set_motor(1);
+	else if (t_read < t_set)
+		set_motor(-100);
 }
 
 void every_cycle(unsigned long ts_now)
 {
+	static unsigned cycle = 0;
+
 	pid_cycle();
 	open_hatch();
 
 	// Here's a good place to do things which are blocking for a while
 	gui(ts_now);
+
+	cycle++;
 }
 
 void loop()

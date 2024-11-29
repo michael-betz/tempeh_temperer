@@ -25,7 +25,7 @@ static void set_heater(uint8_t val)
 
 static void pid_step()
 {
-	static const int32_t k_p = FP(20.0);
+	static const int32_t k_p = FP(50.0);
 	static const int32_t k_i = FP(0.1);
 	static const int32_t k_d = FP(0.0);  // limited due to sensors resolution
 

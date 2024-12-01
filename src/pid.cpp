@@ -25,7 +25,7 @@ static void set_heater(uint8_t val)
 
 static void pid_step()
 {
-	static const int32_t k_p = FP(50.0);
+	static const int32_t k_p = FP(100.0);
 	static const int32_t k_i = FP(0.1);
 	static const int32_t k_d = FP(0.0);  // limited due to sensors resolution
 
@@ -35,16 +35,20 @@ static void pid_step()
 	static int32_t r_ = 0, r__ = 0, r___ = 0;
 
 	// 4 averaged temp. readings
-	int32_t r = (t_read + r_ + r__ + r___ + 2) / 4;
+	int32_t t_avg = (t_read + r_ + r__ + r___ + 2) / 4;
 
 	int32_t err = 0, diff = 0;
 	if (cycle >= 3) {
 		// Calculate error from 4 averaged temperature readings
-		err = t_set - r;
+		err = t_set - t_avg;
 
 		// Calculate differential from 4 readings apart
 		diff = r___ - t_read;
 	}
+
+	r___ = r__;
+	r__ = r_;
+	r_ = t_read;
 
 	// Squared error
 	// int32_t err2 = ((int64_t)err * err + FP_ROUND) >> FP_FRAC;
@@ -74,10 +78,6 @@ static void pid_step()
 	if (!heater_enabled)
 		power = 0;
 
-	r___ = r__;
-	r__ = r_;
-	r_ = r;
-
 	print_str("c ");
 	print_udec(cycle);
 	print_str(", ");
@@ -87,7 +87,7 @@ static void pid_step()
 	print_str(", ");
 
 	print_str("r ");
-	print_dec_fix(r, FP_FRAC, 2);
+	print_dec_fix(t_avg, FP_FRAC, 2);
 	print_str(", ");
 
 	print_str("p ");

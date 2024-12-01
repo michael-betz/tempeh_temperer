@@ -99,17 +99,17 @@ void _putchar(char c) {
 }
 
 
-void draw_top()
-{
-  writeFillRect(0, 0, 26, 6, 0);
+// void draw_top()
+// {
+//   writeFillRect(0, 0, 26, 6, 0);
 
-  for (uint8_t i=0; i<=N_STAGES; i++) {
-    if (current_stage == i)
-      writeFillRect(2 + i * 8, 0, 6, 6, 1);
-    else
-      writeRect(2 + i * 8, 0, 6, 6, 1);
-  }
-}
+//   for (uint8_t i=0; i<=N_STAGES; i++) {
+//     if (current_stage == i)
+//       writeFillRect(2 + i * 8, 0, 6, 6, 1);
+//     else
+//       writeRect(2 + i * 8, 0, 6, 6, 1);
+//   }
+// }
 
 
 void gui(unsigned long ts_now)
@@ -148,10 +148,27 @@ void gui(unsigned long ts_now)
   set_size(1);
   print_str("set: ");
   print_dec_fix(t_set, FP_FRAC, 1);
-  print_str(" C\n");
+  print_str(" C  ");
+
+  // process run time
+  uint32_t t_process_secs = ms_since_start / 1000;
+  uint16_t t_process_mins = t_process_secs / 60;
+
+  print_dec(t_process_mins / 60);
+  print_str(":");
+  print_udec_dp(t_process_mins % 60, 2, 0);
+  print_str(":");
+  print_udec_dp(t_process_secs % 60, 2, 0);
 
   ssd_send();
   print_mux = PRINT_UART;
+
+  // save it every 5 min
+  static unsigned long ts_last_store = 0;
+  if (ts_now - ts_last_store > 1000l * 60 * 5) {
+    store_ee(ms_since_start, SL_MS_SINCE_START);
+    ts_last_store = ts_now;
+  }
 
   // invert display every 1 h
   static unsigned long ts_last_invert = 0;
@@ -163,12 +180,24 @@ void gui(unsigned long ts_now)
 
 void buttons(unsigned long ts_now)
 {
-  static uint8_t idle_cycles=0xFF, pushed_cycles=0, n_incr=0;
+  static uint8_t idle_cycles=0xFF, pushed_cycles=0, n_incr=0,
+  static uint16_t mid_cycles = 0;
   static unsigned long ts = 0;
 
   if (ts_now - ts <= 1)
     return;
   ts = ts_now;
+
+  if (digitalRead(PIN_MID) == 0) {
+    mid_cycles++;
+    if (mid_cycles >= 500) {
+      print_str("reseting process timer\n");
+      mid_cycles = 0;
+      ms_since_start = 0;
+    }
+  } else {
+    mid_cycles = 0;
+  }
 
   int8_t sign = 0;
   if (digitalRead(PIN_UP) == 0) {

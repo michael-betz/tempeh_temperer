@@ -15,8 +15,7 @@ void pid_cycle();
 enum EE_SLOTS {
 	SL_T_SET,
 	SL_I_VAL,
-	SL_PROCESS_0,
-	SL_PROCESS_1
+	SL_MS_SINCE_START,
 };
 
 // Store 32 bit value into EEPROM

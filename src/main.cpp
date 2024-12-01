@@ -8,13 +8,8 @@
 #include "main.h"
 #include "pid.h"
 
-// 0: incubation. Never open the lid
-// 1: growing. Open the lid
-// 2: finished, disable temp. regulation
-uint8_t current_stage = 0;
-uint16_t target_temperatures[N_STAGES] = {0};
-uint16_t max_temperatures[N_STAGES] = {0};
-
+// process time
+uint32_t ms_since_start = 0;
 
 #define MAX_HATCH 50
 
@@ -63,6 +58,7 @@ void setup()
 
 	pinMode(PIN_UP, INPUT_PULLUP);
 	pinMode(PIN_DOWN, INPUT_PULLUP);
+	pinMode(PIN_MID, INPUT_PULLUP);
 
 	Serial.begin(115200);
 	print_str("Yo! This is Tempeh Temperer!\n");
@@ -86,15 +82,20 @@ void setup()
 
 	pid_init();
 
-	for (uint8_t i=0; i<N_STAGES; i++) {
-		uint32_t tmp = 0;
-		if (!load_ee((int32_t*)(&tmp), SL_PROCESS_0 + i)) {
-			tmp = (FP(38.0) << 16) | FP(32.0);
-			print_str("Slot "); print_hex(i, 1); print_str("invalid. Using 32 / 38 degC\n");
-		}
-		target_temperatures[i] = tmp & 0xFFFF;
-		max_temperatures[i] = (tmp >> 16) & 0xFFFF;
+	// for (uint8_t i=0; i<N_STAGES; i++) {
+	// 	uint32_t tmp = 0;
+	// 	if (!load_ee((int32_t*)(&tmp), SL_PROCESS_0 + i)) {
+	// 		tmp = (FP(38.0) << 16) | FP(32.0);
+	// 		print_str("Slot "); print_hex(i, 1); print_str("invalid. Using 32 / 38 degC\n");
+	// 	}
+	// 	target_temperatures[i] = tmp & 0xFFFF;
+	// 	max_temperatures[i] = (tmp >> 16) & 0xFFFF;
+	// }
+	if (!load_ee(&ms_since_start, SL_MS_SINCE_START)) {
+		ms_since_start = 0;
+		store_ee(ms_since_start, SL_MS_SINCE_START);
 	}
+
 }
 
 // For setting the temperature set-point over serial port
@@ -145,6 +146,10 @@ void serial_in()
 
 void open_hatch()
 {
+	// don't open hatch within first 1 h
+	if (ms_since_start < 1000 * 60 * 60)
+		return;
+
 	if (t_read > t_set + FP(5.0))
 		set_motor(1);
 	else if (t_read < t_set)
@@ -160,6 +165,11 @@ void every_cycle(unsigned long ts_now)
 
 	// Here's a good place to do things which are blocking for a while
 	gui(ts_now);
+
+	// keep track of process time
+	static unsigned long last_ms = 0;
+	ms_since_start += ts_now - last_ms;
+	last_ms = ts_now;
 
 	cycle++;
 }

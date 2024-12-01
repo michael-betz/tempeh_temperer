@@ -27,11 +27,10 @@
 
 #define PIN_UP 8
 #define PIN_DOWN 2
+#define PIN_MID 7
 
 #define PIN_ONE_WIRE 9
 
-#define N_STAGES 2
-
-extern uint8_t current_stage;
+extern uint32_t ms_since_start;
 
 #endif

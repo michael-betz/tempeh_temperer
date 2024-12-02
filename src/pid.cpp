@@ -25,8 +25,8 @@ static void set_heater(uint8_t val)
 
 static void pid_step()
 {
-	static const int32_t k_p = FP(100.0);
-	static const int32_t k_i = FP(0.1);
+	static const int32_t k_p = FP(50.0);
+	static const int32_t k_i = FP(0.05);
 	static const int32_t k_d = FP(0.0);  // limited due to sensors resolution
 
 	static uint32_t cycle = 0;
@@ -62,8 +62,8 @@ static void pid_step()
 
 	// Integral term (from linear error)
 	if (abs(p_val) >= MAX_POWER) {
-		// Put the I part at half power if we are pegged
-		i_val = (p_val > 0) ? MAX_POWER / 2 : MIN_POWER / 2;
+		// Put the I part at zero if we are pegged
+		i_val = 0;
 	} else {
 		i_val += (err * k_i + FP_ROUND) >> FP_FRAC;
 		i_val = limit(i_val, MIN_POWER, MAX_POWER);

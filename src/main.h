@@ -15,7 +15,7 @@
 #define FP(v) ((int32_t)(v * FP_SCALE + 0.5))
 
 #define MAX_POWER (0xFF << FP_FRAC)
-#define MIN_POWER (0 << FP_FRAC)
+#define MIN_POWER (4 << FP_FRAC)  // not 0 to keep powerbank from shutting down
 
 // PWM pins: 3, 5, 6, 9, 10, 11
 // Heater PWM pin

@@ -180,7 +180,7 @@ void gui(unsigned long ts_now)
 
 void buttons(unsigned long ts_now)
 {
-  static uint8_t idle_cycles=0xFF, pushed_cycles=0, n_incr=0,
+  static uint8_t idle_cycles=0xFF, pushed_cycles=0, n_incr=0;
   static uint16_t mid_cycles = 0;
   static unsigned long ts = 0;
 

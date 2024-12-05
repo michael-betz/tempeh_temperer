@@ -121,7 +121,7 @@ void gui(unsigned long ts_now)
     // bar-graph
     hLine(0, 0, DISPLAY_WIDTH, true);
     hLine(0, 7, DISPLAY_WIDTH, true);
-    int16_t p = (power + FP_ROUND) >> (FP_FRAC + 1);
+    int16_t p = (target_heater_power + FP_ROUND) >> (FP_FRAC + 1);
     if (p > 0)
       fillRect(0, p, 2, 5, true);
     else if (p < 0)
@@ -138,7 +138,7 @@ void gui(unsigned long ts_now)
     print_str("E");
     print_udec(one_wire_error);
   } else {
-    print_dec_fix(t_read, FP_FRAC, 1);
+    print_dec_fix(measured_probe_temperature, FP_FRAC, 1);
     set_size(2);
     print_str(" C\n");
   }
@@ -147,7 +147,7 @@ void gui(unsigned long ts_now)
   set_cursor(0, 57);
   set_size(1);
   print_str("set: ");
-  print_dec_fix(t_set, FP_FRAC, 1);
+  print_dec_fix(target_probe_temperature, FP_FRAC, 1);
   print_str(" C  ");
 
   // process run time
@@ -209,7 +209,7 @@ void buttons(unsigned long ts_now)
     n_incr = 0;
 
     if (idle_cycles == 0xFE) {
-      store_ee(t_set, SL_T_SET);
+      store_ee(target_probe_temperature, SL_T_SET);
       if (!heater_enabled) {
         print_str("Enabling heater\n");
         heater_enabled = true;
@@ -224,12 +224,12 @@ void buttons(unsigned long ts_now)
 
   if (pushed_cycles == 5) {
     if (n_incr > 10) {
-      t_set += FP(1.0) * sign;
+      target_probe_temperature += FP(1.0) * sign;
     } else {
-      t_set += FP(0.1) * sign;
+      target_probe_temperature += FP(0.1) * sign;
       n_incr++;
     }
-    t_set = limit(t_set, FP(0.0), FP(50.0));
+    target_probe_temperature = limit(target_probe_temperature, AIR_MIN_LIMIT, AIR_MAX_LIMIT);
     idle_cycles = 0;
     gui(ts_now);
   }

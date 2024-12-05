@@ -1,8 +1,45 @@
 #pragma once
 
-extern int32_t t_set;
-extern int32_t t_read;
-extern int32_t power;
+// Number of fracional bits
+// Need high resolution for integral-term to accumulate
+// small differences with low (0.1) coefficients
+#define FP_FRAC 6
+
+#define FP_SCALE (1 << FP_FRAC)
+#define FP_ROUND (1 << (FP_FRAC - 1))
+
+// Convert floating point constant to fixed point
+#define FP(v) ((int32_t)(v * FP_SCALE + 0.5))
+
+// How many temperature values to average [cycles]
+#define N_AVG 4
+
+// ---------------------------------------------------------------
+// Inner loop which controls the heater PWM from air temperature
+// ---------------------------------------------------------------
+#define AIR_KP FP(50.0)
+
+// PWM-value limits. Valid range from 0 to 0xFF
+#define POWER_MAX_LIMIT (0xFF << FP_FRAC)
+#define POWER_MIN_LIMIT (4 << FP_FRAC)  // not 0 to keep powerbank from shutting down
+
+// ---------------------------------------------------------------
+//  Outer loop which controls Tempeh probe temperature
+// ---------------------------------------------------------------
+#define PROBE_KP FP(50.0)
+#define PROBE_KI FP(0.05)
+
+// Air temperature set-point limits in [degC]
+#define AIR_MAX_LIMIT FP(37.0)
+#define AIR_MIN_LIMIT FP(20.0)
+
+extern int16_t measured_air_temperature;
+extern int16_t measured_probe_temperature;
+
+extern int16_t target_probe_temperature;
+extern int16_t target_air_temperature;
+extern int16_t target_heater_power;
+
 extern bool heater_enabled;
 
 // Call this once

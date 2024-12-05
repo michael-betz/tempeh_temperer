@@ -8,54 +8,40 @@
 OneWire ds(PIN_ONE_WIRE);
 
 uint8_t one_wire_error = 0;
-uint8_t ds_addr[8];
+uint8_t ds_addr_air[8];
+uint8_t ds_addr_probe[8];
 
-void init_one_wire(void)
+// returns 0 on success
+static uint8_t init_sensor(uint8_t *ds_addr)
 {
-	print_str("init_one_wire(): ");
-
-	if (!ds.reset()) {  // TODO this freezes the second time
-		print_str("not present\n");
-		one_wire_error = 1;
-		return;
-	}
-
 	if (!ds.search(ds_addr)) {
-		print_str("search failed!\n");
-		one_wire_error = 2;
-		return;
+		return 2;
 	}
-	hexDump(ds_addr, sizeof(ds_addr));
+	hexDump(ds_addr, 8);
 
 	if (OneWire::crc8(ds_addr, 7) != ds_addr[7]) {
-		print_str("CRC invalid!\n");
-		one_wire_error = 3;
-		return;
+		return 3;
 	}
 
 	// the first ROM byte is the chip-id
 	switch (ds_addr[0]) {
 		case 0x10:
-			print_str(" DS18S20");  // or old DS1820
+			print_str(" DS18S20\n");  // or old DS1820
 			break;
 		case 0x28:
-			print_str(" DS18B20");
+			print_str(" DS18B20\n");
 			break;
 		case 0x22:
-			print_str(" DS1822");
+			print_str(" DS1822\n");
 			break;
 		default:
-			print_str("not a DS18x20 family device.\n");
-			one_wire_error = 4;
-			return;
+			return 4;
 	}
-	print_str("\n");
 
 	// Set configuration register
-	if (!ds.reset()) {
-		one_wire_error = 5;
-		return;
-	}
+	if (!ds.reset())
+		return 5;
+
 	ds.select(ds_addr);
 	ds.write(0x4E);  // Write scratchpad
 	ds.write(100);   // TH
@@ -66,29 +52,42 @@ void init_one_wire(void)
 	// 0x7F: 12 bit, 750.00 ms
 	ds.write(0x7F);  // CFG
 
-	one_wire_error = 0;
+	return 0;
 }
 
-// start conversion, with parasite power on at the end
-void conv_temp()
+// returns 0 on success
+uint8_t init_one_wire(void)
 {
-	if (!ds.reset()) {
-		one_wire_error = 6;
-		return;
+	ds.reset_search();
+
+	uint8_t ret = init_sensor(ds_addr_air);
+	ret |= init_sensor(ds_addr_probe) << 4;
+
+	if (ret != 0) {
+		print_str("failed to init sensor: "); print_hex(ret, 2); print_str("\n");
 	}
-	ds.select(ds_addr);
-	// ds.write(0xCC);  // Skip ROM search, for single devices on bus only
-	ds.write(0x44, 1);  // Start conversion, now wait
+
+	return ret;
 }
 
-int16_t read_temp()
+// start conversion, with parasite power on at the end, return 0 on success
+uint8_t conv_temp()
+{
+	if (!ds.reset())
+		return 6;
+
+	ds.skip();			// address all sensors on the bus
+	ds.write(0x44, 1);  // Start conversion, now wait
+	return 0;
+}
+
+// return 0 on success
+uint8_t read_temp(uint8_t *ds_addr, int16_t *val)
 {
 	uint8_t data[9];
 
-	if (!ds.reset()) {
-		one_wire_error = 7;
-		return 0;
-	}
+	if (!ds.reset())
+		return 7;
 
 	ds.select(ds_addr);
 	ds.write(0xBE);  // Read Scratchpad
@@ -100,10 +99,11 @@ int16_t read_temp()
 		print_str("One-wire CRC Error. Expected: ");
 		print_hex(crc, 2);
 		print_str("\n");
-		one_wire_error = 8;
-		return 0;
+		return 8;
 	}
 
-	one_wire_error = 0;
-	return (data[1] << 8) | data[0];
+	if (val != NULL)
+		*val = (data[1] << 8) | data[0];
+
+	return 0;
 }

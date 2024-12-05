@@ -3,14 +3,16 @@
 #include <stdint.h>
 
 extern uint8_t one_wire_error;
+extern uint8_t ds_addr_air[8];
+extern uint8_t ds_addr_probe[8];
 
-void init_one_wire(void);
+uint8_t init_one_wire(void);
 
-// start conversion, wait 187.50 ms before calling read_temp()
-void conv_temp();
+// start conversion, wait before calling read_temp()
+uint8_t conv_temp();
 
-// returns temperature in [degC] as signed fixed point number with nFract = 4
-// returns 0 on CRC error
-int16_t read_temp();
+// writes temperature in [degC] as signed fixed point number with nFract = 4
+// returns 0 on success
+uint8_t read_temp(uint8_t *ds_addr, int16_t *val);
 
 #endif

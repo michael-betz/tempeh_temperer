@@ -91,68 +91,22 @@ void setup()
 	// 	target_temperatures[i] = tmp & 0xFFFF;
 	// 	max_temperatures[i] = (tmp >> 16) & 0xFFFF;
 	// }
-	if (!load_ee(&ms_since_start, SL_MS_SINCE_START)) {
+	if (!load_ee((int32_t*)(&ms_since_start), SL_MS_SINCE_START)) {
 		ms_since_start = 0;
 		store_ee(ms_since_start, SL_MS_SINCE_START);
 	}
 
 }
 
-// For setting the temperature set-point over serial port
-// for example send: 25.5\n to set it to 25.5 deg C
-void serial_in()
-{
-	static char line_buf[16];
-	static uint8_t wp = 0;
-
-	while (Serial.available() > 0) {
-		char c = Serial.read();
-
-		if (c == '\r')
-			return;
-
-		if (c == '\n') {
-			line_buf[wp] = '\0';
-			String s = String(line_buf);
-			if (s.equals("d")) {
-				print_str("Disabling power\n");
-				heater_enabled = false;
-				wp = 0;
-				continue;
-			}
-			if (s.equals("e")) {
-				print_str("Enabling power\n");
-				heater_enabled = true;
-				wp = 0;
-				continue;
-			}
-			float f = s.toFloat();
-			if (f > 0 && f < 50.0) {
-				print_str("New SP: ");
-				print_str(line_buf);
-				print_str("\n");
-				t_set = f * FP_SCALE;
-				store_ee(t_set, SL_T_SET);
-			}
-			wp = 0;
-			continue;
-		}
-
-		line_buf[wp++] = c;
-		if (wp >= sizeof(line_buf))
-			wp = 0;
-	}
-}
-
 void open_hatch()
 {
 	// don't open hatch within first 1 h
-	if (ms_since_start < 1000 * 60 * 60)
+	if (ms_since_start < (1000L * 60 * 60))
 		return;
 
-	if (t_read > t_set + FP(5.0))
+	if (measured_probe_temperature > target_probe_temperature + FP(3.0))
 		set_motor(1);
-	else if (t_read < t_set)
+	else if (measured_probe_temperature < target_probe_temperature)
 		set_motor(-100);
 }
 
@@ -188,5 +142,4 @@ void loop()
 
 	// Called as fast as possible
 	buttons(ts_now);
-	serial_in();
 }

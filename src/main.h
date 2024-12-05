@@ -3,20 +3,6 @@
 
 #define CYCLE_TIME 1000 // [ms]
 
-// Number of fracional bits
-// Need high resolution for integral-term to accumulate
-// small differences with low (0.1) coefficients
-#define FP_FRAC 6
-
-#define FP_SCALE (1 << FP_FRAC)
-#define FP_ROUND (1 << (FP_FRAC - 1))
-
-// Convert floating point constant to fixed point
-#define FP(v) ((int32_t)(v * FP_SCALE + 0.5))
-
-#define MAX_POWER (0xFF << FP_FRAC)
-#define MIN_POWER (4 << FP_FRAC)  // not 0 to keep powerbank from shutting down
-
 // PWM pins: 3, 5, 6, 9, 10, 11
 // Heater PWM pin
 #define PIN_PWM 3

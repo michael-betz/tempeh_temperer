@@ -60,6 +60,14 @@ void pid_air_step()
 		air_i_val = limit(air_i_val, POWER_MIN_LIMIT, POWER_MAX_LIMIT);
 	}
 
+	print_str("ai ");
+	print_dec_fix(air_i_val, FP_FRAC, 2);
+	print_str(", ");
+
+	print_str("ap ");
+	print_dec_fix(p_val, FP_FRAC, 2);
+	print_str(", ");
+
 	target_heater_power = limit(p_val + air_i_val, POWER_MIN_LIMIT, POWER_MAX_LIMIT);
 }
 
@@ -84,7 +92,7 @@ void pid_probe_step()
 	}
 
 	print_str("pi ");
-	print_dec_fix(probe_i_val, FP_FRAC, 2);
+	print_dec_fix(probe_i_val / 8, FP_FRAC, 2);
 	print_str(", ");
 
 	print_str("pp ");

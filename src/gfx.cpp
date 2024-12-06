@@ -117,40 +117,25 @@ void gui(unsigned long ts_now)
   print_mux = PRINT_OLED;
   fill(0);
 
+  // ----------------------
+  //  Top row (yellow)
+  // ----------------------
   if (heater_enabled) {
-    // bar-graph
-    hLine(0, 0, DISPLAY_WIDTH, true);
-    hLine(0, 7, DISPLAY_WIDTH, true);
-    int16_t p = (target_heater_power + FP_ROUND) >> (FP_FRAC + 1);
+    // bar-graph on the top left
+    hLine(0, 0, DISPLAY_WIDTH / 2, true);
+    hLine(0, 7, DISPLAY_WIDTH / 2, true);
+    int16_t p = (target_heater_power + FP_ROUND) >> (FP_FRAC + 2);
     if (p > 0)
       fillRect(0, p, 2, 5, true);
-    else if (p < 0)
-      fillRect(DISPLAY_WIDTH + p - 1, DISPLAY_WIDTH - 1, 2, 5, true);
   } else {
     set_cursor(1, 1);
-    print_str("Power disabled");
+    print_str("disabled");
   }
 
-  // temperature reading
-  set_cursor(1, 17);
-  set_size(4);
-  if (one_wire_error > 0) {
-    print_str("E");
-    print_udec(one_wire_error);
-  } else {
-    print_dec_fix(measured_probe_temperature, FP_FRAC, 1);
-    set_size(2);
-    print_str(" C\n");
-  }
-
-  // set-point
-  set_cursor(0, 57);
+  // process run time on the top right
+  set_cursor(DISPLAY_WIDTH / 2, 8);
   set_size(1);
-  print_str("set: ");
-  print_dec_fix(target_probe_temperature, FP_FRAC, 1);
-  print_str(" C  ");
 
-  // process run time
   uint32_t t_process_secs = ms_since_start / 1000;
   uint16_t t_process_mins = t_process_secs / 60;
 
@@ -160,22 +145,40 @@ void gui(unsigned long ts_now)
   print_str(":");
   print_udec_dp(t_process_secs % 60, 2, 0);
 
+  // ----------------------
+  //  temperature reading
+  // ----------------------
+  set_cursor(0, 17);
+  set_size(3);
+  if (one_wire_error > 0) {
+    print_str("E");
+    print_udec(one_wire_error);
+  } else {
+    print_dec_fix(measured_air_temperature, FP_FRAC, 1);
+    if (n_sensors >= 2) {
+      set_cursor(DISPLAY_WIDTH / 2, 17);
+      print_dec_fix(measured_probe_temperature, FP_FRAC, 1);
+    }
+  }
+
+  // ----------------------
+  //  set-points
+  // ----------------------
+  set_size(1);
+  set_cursor(0, 48);
+  print_str("air\n");
+  print_dec_fix(target_air_temperature, FP_FRAC, 1);
+  print_str(" C  ");
+
+  if (n_sensors >= 2) {
+    set_cursor(DISPLAY_WIDTH / 2, 48);
+    print_str("probe\n");
+    print_dec_fix(target_probe_temperature, FP_FRAC, 1);
+    print_str(" C  ");
+  }
+
   ssd_send();
   print_mux = PRINT_UART;
-
-  // save it every 5 min
-  static unsigned long ts_last_store = 0;
-  if (ts_now - ts_last_store > 1000l * 60 * 5) {
-    store_ee(ms_since_start, SL_MS_SINCE_START);
-    ts_last_store = ts_now;
-  }
-
-  // invert display every 1 h
-  static unsigned long ts_last_invert = 0;
-  if (ts_now - ts_last_invert > 1000l * 60 * 60) {
-    ts_last_invert = ts_now;
-    ssd_invert();
-  }
 }
 
 void buttons(unsigned long ts_now)

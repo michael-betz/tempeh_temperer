@@ -7,6 +7,7 @@
 // a 4.7K resistor is necessary
 OneWire ds(PIN_ONE_WIRE);
 
+uint8_t n_sensors = 0;
 uint8_t one_wire_error = 0;
 uint8_t ds_addr_air[8];
 uint8_t ds_addr_probe[8];
@@ -58,10 +59,29 @@ static uint8_t init_sensor(uint8_t *ds_addr)
 // returns 0 on success
 uint8_t init_one_wire(void)
 {
-	uint8_t ret;
+	uint8_t ret = 0;
+
+	n_sensors = 0;
 
 	ds.reset_search();
+	while (ds.search(ds_addr_air))
+		n_sensors++;
 
+	if (n_sensors <= 0) {
+		print_str("No one-wire sensors found :(");
+		return 99;
+	}
+
+	if (n_sensors == 1) {
+		print_str("One-sensor mode (air-temp)");
+		ds.reset_search();
+		return init_sensor(ds_addr_air);
+	}
+
+	// multiple sensors found
+	print_str("Multi-sensor mode (air and probe)");
+	n_sensors = 2;
+	ds.reset_search();
 	#ifdef SWAP_SENSORS
 		ret = init_sensor(ds_addr_probe);
 		ret |= init_sensor(ds_addr_air) << 4;
@@ -70,9 +90,7 @@ uint8_t init_one_wire(void)
 		ret |= init_sensor(ds_addr_probe) << 4;
 	#endif
 
-	if (ret != 0) {
-		print_str("failed to init sensor: "); print_hex(ret, 2); print_str("\n");
-	}
+	one_wire_error = ret;
 
 	return ret;
 }
@@ -80,11 +98,14 @@ uint8_t init_one_wire(void)
 // start conversion, with parasite power on at the end, return 0 on success
 uint8_t conv_temp()
 {
-	if (!ds.reset())
-		return 6;
+	if (!ds.reset()) {
+		one_wire_error = 6;
+		return one_wire_error;
+	}
 
 	ds.skip();			// address all sensors on the bus
 	ds.write(0x44, 1);  // Start conversion, now wait
+	one_wire_error = 0;
 	return 0;
 }
 
@@ -93,8 +114,10 @@ uint8_t read_temp(uint8_t *ds_addr, int16_t *val)
 {
 	uint8_t data[9];
 
-	if (!ds.reset())
-		return 7;
+	if (!ds.reset()) {
+		one_wire_error = 7;
+		return one_wire_error;
+	}
 
 	ds.select(ds_addr);
 	ds.write(0xBE);  // Read Scratchpad
@@ -106,11 +129,13 @@ uint8_t read_temp(uint8_t *ds_addr, int16_t *val)
 		print_str("One-wire CRC Error. Expected: ");
 		print_hex(crc, 2);
 		print_str("\n");
-		return 8;
+		one_wire_error = 8;
+		return one_wire_error;
 	}
 
 	if (val != NULL)
 		*val = (data[1] << 8) | data[0];
 
-	return 0;
+	one_wire_error = 0;
+	return one_wire_error;
 }

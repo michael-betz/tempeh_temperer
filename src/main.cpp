@@ -82,20 +82,10 @@ void setup()
 
 	pid_init();
 
-	// for (uint8_t i=0; i<N_STAGES; i++) {
-	// 	uint32_t tmp = 0;
-	// 	if (!load_ee((int32_t*)(&tmp), SL_PROCESS_0 + i)) {
-	// 		tmp = (FP(38.0) << 16) | FP(32.0);
-	// 		print_str("Slot "); print_hex(i, 1); print_str("invalid. Using 32 / 38 degC\n");
-	// 	}
-	// 	target_temperatures[i] = tmp & 0xFFFF;
-	// 	max_temperatures[i] = (tmp >> 16) & 0xFFFF;
-	// }
 	if (!load_ee((int32_t*)(&ms_since_start), SL_MS_SINCE_START)) {
 		ms_since_start = 0;
 		store_ee(ms_since_start, SL_MS_SINCE_START);
 	}
-
 }
 
 void open_hatch()
@@ -119,6 +109,15 @@ void every_cycle(unsigned long ts_now)
 
 	// Here's a good place to do things which are blocking for a while
 	gui(ts_now);
+
+  	// save some values to EEPROM every 10 min
+	if (cycle > 0 && (cycle % 600) == 0) {
+		store_ee(ms_since_start, SL_MS_SINCE_START);
+	}
+
+	// invert display every 1 h
+	if (cycle > 0 && (cycle % 3600) == 0)
+	    ssd_invert();
 
 	// keep track of process time
 	static unsigned long last_ms = 0;

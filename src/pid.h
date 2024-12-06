@@ -17,7 +17,13 @@
 // ---------------------------------------------------------------
 // Inner loop which controls the heater PWM from air temperature
 // ---------------------------------------------------------------
-#define AIR_KP FP(200.0)
+// Used in dual sensor mode
+#define AIR_KP_DUAL FP(200.0)  // PWM units / degC
+#define AIR_KI_DUAL FP(0.0)  // PWM units / degC / s
+
+// only used in single sensor mode
+#define AIR_KP_SINGLE FP(150.0)
+#define AIR_KI_SINGLE FP(0.5)
 
 // PWM-value limits. Valid range from 0 to 0xFF
 #define POWER_MAX_LIMIT (0xFF << FP_FRAC)
@@ -26,8 +32,7 @@
 // ---------------------------------------------------------------
 //  Outer loop which controls Tempeh probe temperature
 // ---------------------------------------------------------------
-#define PROBE_KP FP(10.0)
-#define PROBE_KI 1
+#define PROBE_KP FP(10.0)  // degC / degC
 
 // Air temperature set-point limits in [degC]
 #define AIR_MAX_LIMIT FP(38.0)
@@ -53,6 +58,7 @@ enum EE_SLOTS {
 	SL_T_SET,
 	SL_I_VAL,
 	SL_MS_SINCE_START,
+	SL_I_VAL_AIR
 };
 
 // Store 32 bit value into EEPROM

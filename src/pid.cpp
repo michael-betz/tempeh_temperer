@@ -18,6 +18,7 @@ int16_t target_probe_temperature = 0;
 bool heater_enabled = false;
 
 static int32_t probe_i_val = 0;
+static int32_t air_i_val = 0;
 
 // val is 0 ... 255
 static void set_heater(int16_t val)
@@ -41,12 +42,25 @@ static void set_heater(int16_t val)
 // Sets target heater power
 void pid_air_step()
 {
+	const int32_t air_kp = (n_sensors >= 2) ? AIR_KP_DUAL : AIR_KP_SINGLE;
+	const int32_t air_ki = (n_sensors >= 2) ? AIR_KI_DUAL : AIR_KI_SINGLE;
+
 	// Calculate error term
 	int32_t err = target_air_temperature - measured_air_temperature;
 
 	// Proportional term, output sum with limiter
-	int32_t p_val = (err * AIR_KP + FP_ROUND) >> FP_FRAC;
-	target_heater_power = limit(p_val, POWER_MIN_LIMIT, POWER_MAX_LIMIT);
+	int32_t p_val = (err * air_kp + FP_ROUND) >> FP_FRAC;
+
+	// Integral term (from linear error)
+	if (abs(err) > FP(1.5)) {
+		// Leave at half power if we are further than 1.5 C away from target
+		air_i_val = (POWER_MIN_LIMIT + POWER_MAX_LIMIT) / 2;
+	} else {
+		air_i_val += (err * air_ki + FP_ROUND) >> FP_FRAC;
+		air_i_val = limit(air_i_val, POWER_MIN_LIMIT, POWER_MAX_LIMIT);
+	}
+
+	target_heater_power = limit(p_val + air_i_val, POWER_MIN_LIMIT, POWER_MAX_LIMIT);
 }
 
 // Returns target air temperature
@@ -64,6 +78,7 @@ void pid_probe_step()
 		// Reset the I-part if we are pegged
 		probe_i_val = target_probe_temperature * 8;
 	} else {
+		// move I-term with the minimum increment possible
 		probe_i_val += err > 0 ? 1 : -1;  // (err * PROBE_KI + FP_ROUND) >> FP_FRAC;
 		probe_i_val = limit(probe_i_val, AIR_MIN_LIMIT * 8, AIR_MAX_LIMIT * 8);
 	}
@@ -95,8 +110,12 @@ void pid_init()
 	TCCR2A |= (1 << COM2B1);
 
 	// Init one wire interface to temperature sensor
-	if (init_one_wire() == 0)
+	if (init_one_wire() != 0) {
+		print_str("Sensor error, disabling heater\n");
+		heater_enabled = false;
+	} else {
 		heater_enabled = true;
+	}
 
 	conv_temp();
 
@@ -139,7 +158,9 @@ void pid_cycle()
 	// Read the two one wire temp. sensors
 	int16_t tmp_air = 0, tmp_probe = 0;
 	uint8_t ret = read_temp(ds_addr_air, &tmp_air);
-	ret |= read_temp(ds_addr_probe, &tmp_probe) << 4;
+
+	if (n_sensors >= 2)
+		ret |= read_temp(ds_addr_probe, &tmp_probe) << 4;
 
 	// Start the next temperature conversion already
 	ret |= conv_temp();
@@ -157,7 +178,8 @@ void pid_cycle()
 
 	// New temperature values are available
 	measured_air_temperature = get_avg_temp(tmp_air, temperature_air);
-	measured_probe_temperature = get_avg_temp(tmp_probe, temperature_probe);
+	if (n_sensors >= 2)
+		measured_probe_temperature = get_avg_temp(tmp_probe, temperature_probe);
 
 	// Wait for averaging to converge
 	if (cycle < N_AVG) {
@@ -177,7 +199,11 @@ void pid_cycle()
 	print_dec_fix(target_probe_temperature, FP_FRAC, 2);
 	print_str(", ");
 
-	pid_probe_step();
+	if (n_sensors >= 2)
+		pid_probe_step();
+	else
+		target_air_temperature = target_probe_temperature;
+
 	pid_air_step();
 	set_heater(target_heater_power);
 
@@ -188,8 +214,12 @@ void pid_cycle()
 		print_str("off");
 	print_str("\n");
 
-	if ((cycle % 600) == 0 && probe_i_val != 0)
-		store_ee(probe_i_val, SL_I_VAL);
+	if ((cycle % 600) == 0) {
+		if (probe_i_val != 0)
+			store_ee(probe_i_val, SL_I_VAL);
+		if (air_i_val != 0)
+			store_ee(air_i_val, SL_I_VAL_AIR);
+	}
 
 	cycle++;
 }

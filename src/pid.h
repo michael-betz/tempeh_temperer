@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------
 // Inner loop which controls the heater PWM from air temperature
 // ---------------------------------------------------------------
-#define AIR_KP FP(50.0)
+#define AIR_KP FP(200.0)
 
 // PWM-value limits. Valid range from 0 to 0xFF
 #define POWER_MAX_LIMIT (0xFF << FP_FRAC)
@@ -26,11 +26,11 @@
 // ---------------------------------------------------------------
 //  Outer loop which controls Tempeh probe temperature
 // ---------------------------------------------------------------
-#define PROBE_KP FP(50.0)
-#define PROBE_KI FP(0.05)
+#define PROBE_KP FP(10.0)
+#define PROBE_KI 1
 
 // Air temperature set-point limits in [degC]
-#define AIR_MAX_LIMIT FP(37.0)
+#define AIR_MAX_LIMIT FP(38.0)
 #define AIR_MIN_LIMIT FP(20.0)
 
 extern int16_t measured_air_temperature;

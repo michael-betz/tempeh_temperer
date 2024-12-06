@@ -57,19 +57,27 @@ void pid_probe_step()
 
 	// Proportional term
 	int32_t p_val = (err * PROBE_KP + FP_ROUND) >> FP_FRAC;
-	p_val = limit(p_val, AIR_MIN_LIMIT - 1, AIR_MAX_LIMIT + 1);
+	// p_val = limit(p_val, AIR_MIN_LIMIT - 1, AIR_MAX_LIMIT + 1);
 
 	// Integral term (from linear error)
-	if (p_val <= AIR_MIN_LIMIT || p_val >= AIR_MAX_LIMIT) {
-		// Center the I-part if we are pegged
-		probe_i_val = (AIR_MIN_LIMIT + AIR_MAX_LIMIT) / 2;
+	if (abs(err) > FP(0.3)) {
+		// Reset the I-part if we are pegged
+		probe_i_val = target_probe_temperature * 8;
 	} else {
-		probe_i_val += (err * PROBE_KI + FP_ROUND) >> FP_FRAC;
-		probe_i_val = limit(probe_i_val, AIR_MIN_LIMIT, AIR_MAX_LIMIT);
+		probe_i_val += err > 0 ? 1 : -1;  // (err * PROBE_KI + FP_ROUND) >> FP_FRAC;
+		probe_i_val = limit(probe_i_val, AIR_MIN_LIMIT * 8, AIR_MAX_LIMIT * 8);
 	}
 
+	print_str("pi ");
+	print_dec_fix(probe_i_val, FP_FRAC, 2);
+	print_str(", ");
+
+	print_str("pp ");
+	print_dec_fix(p_val, FP_FRAC, 2);
+	print_str(", ");
+
 	// Output sum with limiter
-	target_air_temperature = limit(p_val + probe_i_val, AIR_MIN_LIMIT, AIR_MAX_LIMIT);
+	target_air_temperature = limit(p_val + probe_i_val / 8, AIR_MIN_LIMIT, AIR_MAX_LIMIT);
 }
 
 int32_t limit(int32_t val, int32_t a, int32_t b)
@@ -87,7 +95,9 @@ void pid_init()
 	TCCR2A |= (1 << COM2B1);
 
 	// Init one wire interface to temperature sensor
-	init_one_wire();
+	if (init_one_wire() == 0)
+		heater_enabled = true;
+
 	conv_temp();
 
 	int32_t tmp_val = 0;
@@ -116,7 +126,7 @@ static int16_t get_avg_temp(int16_t reading, int16_t *old_readings)
 
 	old_readings[0] = reading;
 
-	return (sum / N_AVG) << (FP_FRAC - 4);
+	return (sum << (FP_FRAC - 4)) / N_AVG;
 }
 
 // Call this with the cycle time
@@ -155,9 +165,28 @@ void pid_cycle()
 		return;
 	}
 
+	print_str("a ");
+	print_dec_fix(measured_air_temperature, FP_FRAC, 2);
+	print_str(" / ");
+	print_dec_fix(target_air_temperature, FP_FRAC, 2);
+	print_str(", ");
+
+	print_str("p ");
+	print_dec_fix(measured_probe_temperature, FP_FRAC, 2);
+	print_str(" / ");
+	print_dec_fix(target_probe_temperature, FP_FRAC, 2);
+	print_str(", ");
+
 	pid_probe_step();
 	pid_air_step();
 	set_heater(target_heater_power);
+
+	print_str("h ");
+	if (heater_enabled)
+		print_dec_fix(target_heater_power, FP_FRAC, 2);
+	else
+		print_str("off");
+	print_str("\n");
 
 	if ((cycle % 600) == 0 && probe_i_val != 0)
 		store_ee(probe_i_val, SL_I_VAL);

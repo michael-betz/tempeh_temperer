@@ -58,10 +58,17 @@ static uint8_t init_sensor(uint8_t *ds_addr)
 // returns 0 on success
 uint8_t init_one_wire(void)
 {
+	uint8_t ret;
+
 	ds.reset_search();
 
-	uint8_t ret = init_sensor(ds_addr_air);
-	ret |= init_sensor(ds_addr_probe) << 4;
+	#ifdef SWAP_SENSORS
+		ret = init_sensor(ds_addr_probe);
+		ret |= init_sensor(ds_addr_air) << 4;
+	#else
+		ret = init_sensor(ds_addr_air);
+		ret |= init_sensor(ds_addr_probe) << 4;
+	#endif
 
 	if (ret != 0) {
 		print_str("failed to init sensor: "); print_hex(ret, 2); print_str("\n");

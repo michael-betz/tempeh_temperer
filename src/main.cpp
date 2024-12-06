@@ -11,7 +11,7 @@
 // process time
 uint32_t ms_since_start = 0;
 
-#define MAX_HATCH 50
+#define MAX_HATCH 55
 
 void set_motor(int8_t amount)
 {

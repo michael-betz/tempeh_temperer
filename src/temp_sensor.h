@@ -2,6 +2,8 @@
 #define TEMP_SENSOR_H
 #include <stdint.h>
 
+#define SWAP_SENSORS
+
 extern uint8_t one_wire_error;
 extern uint8_t ds_addr_air[8];
 extern uint8_t ds_addr_probe[8];

@@ -100,6 +100,7 @@ void print_udec_dp(uint32_t val, const uint8_t n, const uint8_t dp)
 
 void udec_fix(uint32_t val, const uint8_t nFract, uint8_t nDigits, char *buf)
 {
+    // round
     uint32_t fractMask = ((1 << nFract) - 1);  // mask the fractional part
     unsigned ret = udec(val >> nFract, buf);  // Print the integer part
     buf += ret;

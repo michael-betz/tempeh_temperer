@@ -7,12 +7,12 @@
 //  Inner loop which controls the heater PWM from air temperature
 // ---------------------------------------------------------------
 // Used in dual sensor mode
-#define AIR_KP_DUAL FP(200.0)  // PWM units / degC
+#define AIR_KP_DUAL FP(150.0)  // PWM units / degC
 #define AIR_KI_DUAL FP(0.0)  // PWM units / degC / s
 
 // only used in single sensor mode
-#define AIR_KP_SINGLE FP(150.0)
-#define AIR_KI_SINGLE FP(0.5)
+#define AIR_KP_SINGLE FP(75.0)
+#define AIR_KI_SINGLE FP(0.2)
 
 // PWM-value limits. Valid range from 0 to 0xFF
 #define POWER_MAX_LIMIT FP(0xFF)

@@ -67,19 +67,20 @@ uint8_t init_one_wire(void)
 	while (ds.search(ds_addr_air))
 		n_sensors++;
 
+	print_str("Number of 1-wire sensors found: ");
+	print_dec(n_sensors);
+	print_str("\n");
+
 	if (n_sensors <= 0) {
-		print_str("No one-wire sensors found :(");
 		return 99;
 	}
 
 	if (n_sensors == 1) {
-		print_str("One-sensor mode (air-temp)");
 		ds.reset_search();
 		return init_sensor(ds_addr_air);
 	}
 
 	// multiple sensors found
-	print_str("Multi-sensor mode (air and probe)");
 	n_sensors = 2;
 	ds.reset_search();
 	#ifdef SWAP_SENSORS
